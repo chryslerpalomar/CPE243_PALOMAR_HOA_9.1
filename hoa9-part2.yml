@@ -1,0 +1,31 @@
+---
+- hosts: all
+  become: true
+  pre_tasks:
+    - name: Ensure dpkg is configured
+      raw: sudo dpkg --configure -a
+      ignore_errors: yes
+      changed_when: false
+
+    - name: Install updates 
+      tags: always
+      apt:
+        upgrade: yes
+        update_cache: yes
+        cache_valid_time: 86400
+
+- hosts: ControlNode
+  become: true
+  tasks:
+
+    - name: Move key to correct location
+      command: mv cakey.pem /etc/ssl/private/
+      args:
+        chdir: /etc/ssl
+        creates: /etc/ssl/private/cakey.pem
+
+    - name: Move certificate to correct location
+      command: mv cacert.pem /etc/ssl/certs/
+      args:
+        chdir: /etc/ssl
+        creates: /etc/ssl/certs/cacert.pem

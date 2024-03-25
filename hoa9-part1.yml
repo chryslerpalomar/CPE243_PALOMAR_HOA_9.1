@@ -1,0 +1,52 @@
+---
+- hosts: all
+  become: true
+  pre_tasks:
+    - name: Ensure dpkg is configured
+      raw: sudo dpkg --configure -a
+      ignore_errors: yes
+      changed_when: false
+
+    - name: Install updates 
+      tags: always
+      apt:
+        upgrade: yes
+        update_cache: yes
+        cache_valid_time: 86400
+
+- hosts: ControlNode
+  become: true
+  tasks:
+    - name: Create directories for CA
+      file:
+        path: /etc/ssl/CA
+        state: directory
+        mode: '0755'
+
+    - name: Create newcerts directory
+      file:
+        path: /etc/ssl/newcerts
+        state: directory
+        mode: '0755'
+
+    - name: Set initial serial number
+      shell: echo '01' > /etc/ssl/CA/serial
+      args:
+        creates: /etc/ssl/CA/serial
+
+    - name: Create empty index file
+      file:
+        path: /etc/ssl/CA/index.txt
+        state: touch
+
+    - name: Update openssl.cnf configuration
+      replace:
+        path: /etc/ssl/openssl.cnf
+        regexp: '{{ item.regexp }}'
+        replace: '{{ item.replace }}'
+      loop:
+        - { regexp: 'dir = .*/demoCA', replace: 'dir = /etc/ssl' }
+        - { regexp: 'database = .*/index.txt', replace: 'database = /etc/ssl/CA/index.txt' }
+        - { regexp: 'certificate = .*/cacert.pem', replace: 'certificate = /etc/ssl/certs/cacert.pem' }
+        - { regexp: 'serial = .*/serial', replace: 'serial = /etc/ssl/CA/serial' }
+        - { regexp: 'private_key = .*/cakey.pem', replace: 'private_key = /etc/ssl/private/cakey.pem' }
